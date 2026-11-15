@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use tauri::{AppHandle, Manager, Url};
+use tauri::{AppHandle, Manager, Url, WebviewWindowBuilder};
 
 fn server_file(app: &AppHandle) -> tauri::Result<PathBuf> {
 	Ok(app.path().app_config_dir()?.join("server.txt"))
@@ -20,12 +20,14 @@ pub fn run() {
 		.plugin(tauri_plugin_libmpv::init())
 		.invoke_handler(tauri::generate_handler![set_server])
 		.setup(|app| {
+			let window =
+				WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
+					.initialization_script(include_str!("shim.js"))
+					.build()?;
 			let Ok(saved) = fs::read_to_string(server_file(app.handle())?) else {
 				return Ok(());
 			};
-			app.get_webview_window("main")
-				.unwrap()
-				.navigate(Url::parse(&saved)?)?;
+			window.navigate(Url::parse(&saved)?)?;
 			Ok(())
 		})
 		.run(tauri::generate_context!())
