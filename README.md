@@ -4,4 +4,6 @@ Windows desktop app for a [Silo](https://github.com/Silo-Server/silo-server) ser
 
 Run `pnpm setup-lib` once to download mpv into `src-tauri/lib`.
 
+`Ctrl+,` opens the settings.
+
 mpv reads `mpv.conf` from `%LOCALAPPDATA%\com.j3zich.grain`.

@@ -431,6 +431,11 @@
 	});
 
 	addEventListener("pagehide", stop);
+	addEventListener("keydown", (e) => {
+		if (e.ctrlKey && e.key === ",") {
+			window.__TAURI_INTERNALS__.invoke("open_settings");
+		}
+	});
 
 	// Silo's own engine, hls.js or a stream URL the shim does not know play without mpv, and nothing else would show it.
 	const badge = document.createElement("div");

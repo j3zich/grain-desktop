@@ -1,11 +1,21 @@
 const { invoke } = window.__TAURI__.core;
 
-const url = document.querySelector("#url");
+const form = document.querySelector("form");
 const error = document.querySelector("#error");
 
-document.querySelector("#server").addEventListener("submit", async (e) => {
+const settings = await invoke("get_settings");
+form.elements.server.value = settings.server ?? "";
+form.elements.matchRefreshRate.checked = settings.matchRefreshRate;
+form.elements.exclusiveAudio.checked = settings.exclusiveAudio;
+form.elements.audioChannels.value = settings.audioChannels;
+for (const input of form.querySelectorAll("[name=passthrough]")) {
+	input.checked = settings.passthrough.includes(input.value);
+}
+
+form.addEventListener("submit", async (e) => {
 	e.preventDefault();
-	const value = url.value.trim();
+	const data = new FormData(form);
+	const value = String(data.get("server")).trim();
 	const server = URL.parse(value.includes("://") ? value : `https://${value}`)?.href;
 	const answers = server && (await fetch(server, { mode: "no-cors", signal: AbortSignal.timeout(10_000) }).then(() => true, () => false));
 	if (!answers) {
@@ -13,7 +23,15 @@ document.querySelector("#server").addEventListener("submit", async (e) => {
 		return;
 	}
 	try {
-		await invoke("set_server", { url: server });
+		await invoke("save_settings", {
+			settings: {
+				server,
+				matchRefreshRate: data.has("matchRefreshRate"),
+				passthrough: data.getAll("passthrough"),
+				exclusiveAudio: data.has("exclusiveAudio"),
+				audioChannels: data.get("audioChannels"),
+			},
+		});
 	} catch (err) {
 		error.textContent = String(err);
 	}

@@ -9,9 +9,28 @@
 	</head>
 
 	<body>
-		<form id="server">
-			<input id="url" placeholder="silo.example.com" size="40" autofocus required />
-			<button type="submit">Connect</button>
+		<form>
+			<label>Server <input name="server" placeholder="silo.example.com" autofocus required /></label>
+			<label><input type="checkbox" name="matchRefreshRate" /> Match the display refresh rate in fullscreen</label>
+			<fieldset>
+				<legend>Audio passthrough to an AV receiver or soundbar</legend>
+				<label><input type="checkbox" name="passthrough" value="ac3" /> AC-3</label>
+				<label><input type="checkbox" name="passthrough" value="eac3" /> E-AC-3</label>
+				<label><input type="checkbox" name="passthrough" value="dts" /> DTS</label>
+				<label><input type="checkbox" name="passthrough" value="dts-hd" /> DTS-HD</label>
+				<label><input type="checkbox" name="passthrough" value="truehd" /> TrueHD</label>
+			</fieldset>
+			<label><input type="checkbox" name="exclusiveAudio" /> Exclusive audio output</label>
+			<label>
+				Channels
+				<select name="audioChannels">
+					<option value="">Auto</option>
+					<option value="stereo">Stereo</option>
+					<option value="5.1">5.1</option>
+					<option value="7.1">7.1</option>
+				</select>
+			</label>
+			<button type="submit">Save</button>
 			<p id="error"></p>
 		</form>
 	</body>
