@@ -23,7 +23,7 @@
 	},
 	"bundle": {
 		"active": true,
-		"targets": "all",
+		"targets": "nsis",
 		"resources": ["lib/**/*"],
 		"icon": ["icons/icon.ico"]
 	}
