@@ -4,6 +4,7 @@ fn main() {
 			"get_settings",
 			"save_settings",
 			"open_settings",
+			"match_refresh_rate",
 		]),
 	))
 	.expect("failed to run tauri-build");

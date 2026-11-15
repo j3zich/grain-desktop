@@ -332,6 +332,7 @@
 			state.time = (await invoke("get_property", { name: "time-pos", format: "double" }).catch(() => null)) ?? 0;
 			state.loaded = true;
 			fire("durationchange", "loadedmetadata", "resize", "loadeddata", "canplay", "canplaythrough");
+			matchRefreshRate();
 			return;
 		}
 		if (event.event === "playback-restart") {
@@ -430,7 +431,19 @@
 		},
 	});
 
-	addEventListener("pagehide", stop);
+	// Only in fullscreen, not in a window: switching the display's mode makes the picture lag.
+	async function matchRefreshRate() {
+		const fps = video && state.loaded && document.fullscreenElement
+			? await invoke("get_property", { name: "container-fps", format: "double" }).catch(() => null)
+			: null;
+		window.__TAURI_INTERNALS__.invoke("match_refresh_rate", { fps });
+	}
+
+	addEventListener("fullscreenchange", matchRefreshRate);
+	addEventListener("pagehide", () => {
+		stop();
+		matchRefreshRate();
+	});
 	addEventListener("keydown", (e) => {
 		if (e.ctrlKey && e.key === ",") {
 			window.__TAURI_INTERNALS__.invoke("open_settings");

@@ -1,10 +1,12 @@
+mod refresh;
+
 use std::fs;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tauri::ipc::CapabilityBuilder;
-use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tauri_plugin_libmpv::MpvExt;
 
 #[derive(Serialize, Deserialize, Default)]
@@ -52,7 +54,8 @@ fn open_server(window: &WebviewWindow, url: Url) -> tauri::Result<()> {
 			.window(window.label())
 			.permission("core:event:default")
 			.permission("libmpv:default")
-			.permission("allow-open-settings"),
+			.permission("allow-open-settings")
+			.permission("allow-match-refresh-rate"),
 	)?;
 	window.navigate(url)
 }
@@ -104,13 +107,47 @@ async fn open_settings(app: AppHandle) -> tauri::Result<()> {
 	Ok(())
 }
 
+#[tauri::command]
+async fn match_refresh_rate(app: AppHandle, fps: Option<f64>) -> tauri::Result<()> {
+	let Some(fps) = fps else {
+		refresh::restore();
+		return sync_to_display(&app, None);
+	};
+	if !load_settings(&app)?.match_refresh_rate {
+		return Ok(());
+	}
+	let window = app.get_webview_window("main").unwrap();
+	let rate = refresh::switch(window.hwnd()?, fps).map_err(|e| tauri::Error::Anyhow(e.into()))?;
+	sync_to_display(&app, rate)
+}
+
+/// mpv bends playback speed to the display only at a rate matched to the video, not at any rate, where it drops frames; and it reads the
+/// rate when its window is created, not when the mode changes.
+fn sync_to_display(app: &AppHandle, rate: Option<f64>) -> tauri::Result<()> {
+	let video_sync = if rate.is_some() {
+		"display-resample"
+	} else {
+		"audio"
+	};
+	for (name, value) in [
+		("display-fps-override", json!(rate.unwrap_or(0.0))),
+		("video-sync", json!(video_sync)),
+	] {
+		app.mpv()
+			.set_property(name, &value, "main")
+			.map_err(|e| tauri::Error::Anyhow(e.into()))?;
+	}
+	Ok(())
+}
+
 pub fn run() {
 	tauri::Builder::default()
 		.plugin(tauri_plugin_libmpv::init())
 		.invoke_handler(tauri::generate_handler![
 			get_settings,
 			save_settings,
-			open_settings
+			open_settings,
+			match_refresh_rate
 		])
 		.setup(|app| {
 			let settings = load_settings(app.handle())?;
@@ -161,6 +198,11 @@ pub fn run() {
 			}
 			Ok(())
 		})
-		.run(tauri::generate_context!())
-		.expect("error while running tauri application");
+		.build(tauri::generate_context!())
+		.expect("error while building tauri application")
+		.run(|_, event| {
+			if let RunEvent::Exit = event {
+				refresh::restore();
+			}
+		});
 }
