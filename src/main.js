@@ -1,46 +1,20 @@
 const { invoke } = window.__TAURI__.core;
-const { listen } = window.__TAURI__.event;
 
-const path = document.querySelector("#path");
-const pause = document.querySelector("#pause");
-const time = document.querySelector("#time");
+const url = document.querySelector("#url");
+const error = document.querySelector("#error");
 
-await invoke("plugin:libmpv|init", {
-	mpvConfig: {
-		initialOptions: {
-			vo: "gpu-next",
-			hwdec: "auto-safe",
-			"target-colorspace-hint": "yes",
-			"keep-open": "yes",
-			"force-window": "yes",
-		},
-		observedProperties: { pause: "flag", "time-pos": "double", duration: "double" },
-	},
-	windowLabel: "main",
-});
-
-let paused = false;
-let position = 0;
-let duration = 0;
-await listen("mpv-event-main", ({ payload: { event, name, data } }) => {
-	if (event !== "property-change") {
-		return;
-	}
-	if (name === "pause") {
-		paused = data;
-		pause.textContent = paused ? "Play" : "Pause";
-		return;
-	}
-	if (name === "time-pos") {
-		position = data ?? 0;
-	} else {
-		duration = data ?? 0;
-	}
-	time.textContent = `${position.toFixed(1)} / ${duration.toFixed(1)} s`;
-});
-
-document.querySelector("#controls").addEventListener("submit", (e) => {
+document.querySelector("#server").addEventListener("submit", async (e) => {
 	e.preventDefault();
-	invoke("plugin:libmpv|command", { name: "loadfile", args: [path.value], windowLabel: "main" });
+	const value = url.value.trim();
+	const server = URL.parse(value.includes("://") ? value : `https://${value}`)?.href;
+	const answers = server && (await fetch(server, { mode: "no-cors", signal: AbortSignal.timeout(10_000) }).then(() => true, () => false));
+	if (!answers) {
+		error.textContent = `${value} does not answer.`;
+		return;
+	}
+	try {
+		await invoke("set_server", { url: server });
+	} catch (err) {
+		error.textContent = String(err);
+	}
 });
-pause.addEventListener("click", () => invoke("plugin:libmpv|set_property", { name: "pause", value: !paused, windowLabel: "main" }));
