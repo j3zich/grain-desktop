@@ -432,4 +432,16 @@
 
 	addEventListener("pagehide", stop);
 
+	// Silo's own engine, hls.js or a stream URL the shim does not know play without mpv, and nothing else would show it.
+	const badge = document.createElement("div");
+	badge.textContent = "Playing in the browser, not mpv";
+	badge.style.cssText = "position: fixed; top: 12px; right: 12px; z-index: 2147483647; padding: 4px 10px; border-radius: 6px;"
+		+ " background: #b91c1c; color: white; font: 13px system-ui, sans-serif; pointer-events: none;";
+	setInterval(() => {
+		if ([...document.querySelectorAll("video")].some((v) => v !== video && !v.paused)) {
+			document.body?.append(badge);
+			return;
+		}
+		badge.remove();
+	}, 1000);
 })();
