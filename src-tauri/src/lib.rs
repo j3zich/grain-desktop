@@ -52,6 +52,8 @@ pub fn run() {
 						"rebase-start-time": "no",
 						// Silo draws the subtitles.
 						"sid": "no",
+						"config": "yes",
+						"config-dir": app.path().app_local_data_dir()?,
 					},
 					"observedProperties": {
 						"pause": "flag",
