@@ -4,10 +4,11 @@
 	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
-		"tauri": "tauri"
+		"tauri": "tauri",
+		"setup-lib": "tauri-plugin-libmpv-api setup-lib"
 	},
 	"dependencies": {
-		"@tauri-apps/plugin-opener": "^2"
+		"tauri-plugin-libmpv-api": "0.3.2"
 	},
 	"devDependencies": {
 		"@tauri-apps/cli": "^2"
