@@ -14,6 +14,7 @@ name = "grain_lib"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+serde_json = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-libmpv = "0.3.2"
 
