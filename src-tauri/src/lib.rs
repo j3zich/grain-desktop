@@ -210,6 +210,7 @@ pub fn run() {
 			let settings = load_settings(app.handle())?;
 			let window =
 				WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
+					.title(&app.package_info().name)
 					.initialization_script(include_str!("shim.js"))
 					.maximized(settings.start_maximized)
 					.visible(false)
