@@ -1,7 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
+const { invoke } = window.__TAURI__.core;
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
+let greetInputEl;
+let greetMsgEl;
 
 async function greet() {
 	if (greetMsgEl && greetInputEl) {
