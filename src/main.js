@@ -5,6 +5,7 @@ const error = document.querySelector("#error");
 
 const settings = await invoke("get_settings");
 form.elements.server.value = settings.server ?? "";
+form.elements.startMaximized.checked = settings.startMaximized;
 form.elements.matchRefreshRate.checked = settings.matchRefreshRate;
 form.elements.exclusiveAudio.checked = settings.exclusiveAudio;
 form.elements.audioChannels.value = settings.audioChannels;
@@ -26,6 +27,7 @@ form.addEventListener("submit", async (e) => {
 		await invoke("save_settings", {
 			settings: {
 				server,
+				startMaximized: data.has("startMaximized"),
 				matchRefreshRate: data.has("matchRefreshRate"),
 				passthrough: data.getAll("passthrough"),
 				exclusiveAudio: data.has("exclusiveAudio"),

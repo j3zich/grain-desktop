@@ -13,6 +13,7 @@ use tauri_plugin_libmpv::MpvExt;
 #[serde(default, rename_all = "camelCase")]
 struct Settings {
 	server: Option<Url>,
+	start_maximized: bool,
 	match_refresh_rate: bool,
 	passthrough: Vec<String>,
 	exclusive_audio: bool,
@@ -210,6 +211,7 @@ pub fn run() {
 			let window =
 				WebviewWindowBuilder::from_config(app.handle(), &app.config().app.windows[0])?
 					.initialization_script(include_str!("shim.js"))
+					.maximized(settings.start_maximized)
 					.visible(false)
 					.build()?;
 			let mut options = json!({
