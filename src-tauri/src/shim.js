@@ -49,8 +49,7 @@
 	};
 
 	const invoke = (command, args) => window.__TAURI_INTERNALS__.invoke(`plugin:libmpv|${command}`, { ...args, windowLabel: "main" });
-	const mpvCommand = (name, ...args) => invoke("command", { name, args });
-	const setProperty = (name, value) => invoke("set_property", { name, value });
+	const setProperty = (name, value) => window.__TAURI_INTERNALS__.invoke("mpv_set", { name, value });
 	let listening = null;
 
 	class Track extends EventTarget {
@@ -184,7 +183,7 @@
 	function seek(time) {
 		Object.assign(state, { time, seeking: true, ended: false });
 		fire("seeking", "timeupdate");
-		mpvCommand("seek", time, "absolute");
+		window.__TAURI_INTERNALS__.invoke("mpv_seek", { time });
 	}
 
 	const facade = {
@@ -313,14 +312,14 @@
 		await setProperty("pause", true);
 		await setProperty("volume", state.volume * 100);
 		await setProperty("mute", state.muted);
-		await mpvCommand("loadfile", state.src, "replace", "-1", `aid=${audioOrdinal === null ? "auto" : audioOrdinal + 1}`);
+		await window.__TAURI_INTERNALS__.invoke("mpv_load", { url: state.src, aid: audioOrdinal === null ? null : audioOrdinal + 1 });
 	}
 
 	function stop() {
 		if (!video) {
 			return;
 		}
-		mpvCommand("stop");
+		window.__TAURI_INTERNALS__.invoke("mpv_stop");
 		detach();
 	}
 
@@ -329,7 +328,7 @@
 			return;
 		}
 		if (event.event === "file-loaded") {
-			state.time = (await invoke("get_property", { name: "time-pos", format: "double" }).catch(() => null)) ?? 0;
+			state.time = (await window.__TAURI_INTERNALS__.invoke("mpv_get", { name: "time-pos" }).catch(() => null)) ?? 0;
 			state.loaded = true;
 			fire("durationchange", "loadedmetadata", "resize", "loadeddata", "canplay", "canplaythrough");
 			matchRefreshRate();
@@ -434,7 +433,7 @@
 	// Only in fullscreen, not in a window: switching the display's mode makes the picture lag.
 	async function matchRefreshRate() {
 		const fps = video && state.loaded && document.fullscreenElement
-			? await invoke("get_property", { name: "container-fps", format: "double" }).catch(() => null)
+			? await window.__TAURI_INTERNALS__.invoke("mpv_get", { name: "container-fps" }).catch(() => null)
 			: null;
 		window.__TAURI_INTERNALS__.invoke("match_refresh_rate", { fps });
 	}

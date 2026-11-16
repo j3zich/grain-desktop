@@ -1,7 +1,7 @@
 mod refresh;
 
-use std::fs;
 use std::path::PathBuf;
+use std::{fs, io};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -53,11 +53,62 @@ fn open_server(window: &WebviewWindow, url: Url) -> tauri::Result<()> {
 			.remote(format!("{}/*", url.origin().ascii_serialization()))
 			.window(window.label())
 			.permission("core:event:default")
-			.permission("libmpv:default")
+			.permission("allow-mpv-get")
+			.permission("libmpv:allow-set-video-margin-ratio")
+			.permission("allow-mpv-load")
+			.permission("allow-mpv-seek")
+			.permission("allow-mpv-stop")
+			.permission("allow-mpv-set")
 			.permission("allow-open-settings")
 			.permission("allow-match-refresh-rate"),
 	)?;
 	window.navigate(url)
+}
+
+// The server's page drives mpv only through these, not through the plugin's own commands, which take any command or option, `run` included.
+#[tauri::command]
+fn mpv_load(app: AppHandle, url: Url, aid: Option<u32>) -> tauri_plugin_libmpv::Result<()> {
+	if load_settings(&app)?.server.map(|server| server.origin()) != Some(url.origin()) {
+		return Err(io::Error::other(format!("{url} is not on the configured server")).into());
+	}
+	let aid = aid.map_or("auto".to_string(), |aid| aid.to_string());
+	app.mpv().command(
+		"loadfile",
+		&vec![
+			json!(url),
+			json!("replace"),
+			json!("-1"),
+			json!(format!("aid={aid}")),
+		],
+		"main",
+	)
+}
+
+#[tauri::command]
+fn mpv_seek(app: AppHandle, time: f64) -> tauri_plugin_libmpv::Result<()> {
+	app.mpv()
+		.command("seek", &vec![json!(time), json!("absolute")], "main")
+}
+
+#[tauri::command]
+fn mpv_stop(app: AppHandle) -> tauri_plugin_libmpv::Result<()> {
+	app.mpv().command("stop", &vec![], "main")
+}
+
+#[tauri::command]
+fn mpv_set(app: AppHandle, name: String, value: Value) -> tauri_plugin_libmpv::Result<()> {
+	if !["pause", "volume", "mute", "speed"].contains(&name.as_str()) {
+		return Err(io::Error::other(format!("{name} is not settable")).into());
+	}
+	app.mpv().set_property(&name, &value, "main")
+}
+
+#[tauri::command]
+fn mpv_get(app: AppHandle, name: String) -> tauri_plugin_libmpv::Result<Value> {
+	if !["time-pos", "container-fps"].contains(&name.as_str()) {
+		return Err(io::Error::other(format!("{name} is not readable")).into());
+	}
+	app.mpv().get_property(name, "double".to_string(), "main")
 }
 
 #[tauri::command]
@@ -144,6 +195,11 @@ pub fn run() {
 	tauri::Builder::default()
 		.plugin(tauri_plugin_libmpv::init())
 		.invoke_handler(tauri::generate_handler![
+			mpv_load,
+			mpv_seek,
+			mpv_stop,
+			mpv_set,
+			mpv_get,
 			get_settings,
 			save_settings,
 			open_settings,
