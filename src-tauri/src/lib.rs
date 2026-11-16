@@ -97,7 +97,7 @@ fn mpv_stop(app: AppHandle) -> tauri_plugin_libmpv::Result<()> {
 
 #[tauri::command]
 fn mpv_set(app: AppHandle, name: String, value: Value) -> tauri_plugin_libmpv::Result<()> {
-	if !["pause", "volume", "mute", "speed"].contains(&name.as_str()) {
+	if !["pause", "volume", "mute", "speed", "aid"].contains(&name.as_str()) {
 		return Err(io::Error::other(format!("{name} is not settable")).into());
 	}
 	app.mpv().set_property(&name, &value, "main")

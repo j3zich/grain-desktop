@@ -292,6 +292,8 @@
 			}
 			attach(element);
 		}
+		const reused = kept?.path === new URL(src, location.href).pathname ? kept : null;
+		kept = null;
 		Object.assign(state, {
 			src: new URL(src, location.href).href,
 			loaded: false,
@@ -312,15 +314,46 @@
 		await setProperty("pause", true);
 		await setProperty("volume", state.volume * 100);
 		await setProperty("mute", state.muted);
-		await window.__TAURI_INTERNALS__.invoke("mpv_load", { url: state.src, aid: audioOrdinal === null ? null : audioOrdinal + 1 });
+		const aid = audioOrdinal === null ? null : audioOrdinal + 1;
+		if (reused) {
+			const { path, origin, ...media } = reused;
+			// mpv refuses a number for aid, which the plugin passes as a double.
+			await setProperty("aid", String(aid ?? "auto"));
+			Object.assign(state, media);
+			opened(origin);
+			return;
+		}
+		await window.__TAURI_INTERNALS__.invoke("mpv_load", { url: state.src, aid });
 	}
 
+	function opened(time) {
+		Object.assign(state, { time, origin: time, loaded: true });
+		fire("durationchange", "loadedmetadata", "resize", "loadeddata", "canplay", "canplaythrough");
+		matchRefreshRate();
+	}
+
+	// A replan tears the element down and sets its new src in the same task, so mpv stops a task later, not at once; a new src of the same file
+	// then only switches the audio track instead of reopening the file.
+	let kept = null;
 	function stop() {
 		if (!video) {
 			return;
 		}
-		window.__TAURI_INTERNALS__.invoke("mpv_stop");
+		if (state.loaded && !state.error) {
+			const { origin, duration, width, height } = state;
+			kept = { path: new URL(state.src).pathname, origin, duration, width, height };
+			setTimeout(release);
+		} else {
+			window.__TAURI_INTERNALS__.invoke("mpv_stop");
+		}
 		detach();
+	}
+
+	function release() {
+		if (kept) {
+			kept = null;
+			window.__TAURI_INTERNALS__.invoke("mpv_stop");
+		}
 	}
 
 	async function onEvent(event) {
@@ -328,10 +361,7 @@
 			return;
 		}
 		if (event.event === "file-loaded") {
-			state.time = (await window.__TAURI_INTERNALS__.invoke("mpv_get", { name: "time-pos" }).catch(() => null)) ?? 0;
-			state.loaded = true;
-			fire("durationchange", "loadedmetadata", "resize", "loadeddata", "canplay", "canplaythrough");
-			matchRefreshRate();
+			opened((await window.__TAURI_INTERNALS__.invoke("mpv_get", { name: "time-pos" }).catch(() => null)) ?? 0);
 			return;
 		}
 		if (event.event === "playback-restart") {
@@ -357,7 +387,8 @@
 		const data = event.data;
 		switch (event.name) {
 			case "time-pos":
-				if (state.seeking || data == null) {
+				// mpv plays on while a reused file is not reported loaded yet; Silo reads the clock's start at loadedmetadata.
+				if (state.seeking || data == null || !state.loaded) {
 					return;
 				}
 				state.time = data;
@@ -441,6 +472,7 @@
 	addEventListener("fullscreenchange", matchRefreshRate);
 	addEventListener("pagehide", () => {
 		stop();
+		release();
 		matchRefreshRate();
 	});
 	addEventListener("keydown", (e) => {
