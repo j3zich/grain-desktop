@@ -18,7 +18,7 @@ form.addEventListener("submit", async (e) => {
 	const data = new FormData(form);
 	const value = String(data.get("server")).trim();
 	const server = URL.parse(value.includes("://") ? value : `https://${value}`)?.href;
-	const answers = server && (await fetch(server, { mode: "no-cors", signal: AbortSignal.timeout(10_000) }).then(() => true, () => false));
+	const answers = server && (server === settings.server || (await fetch(server, { mode: "no-cors", signal: AbortSignal.timeout(10_000) }).then(() => true, () => false)));
 	if (!answers) {
 		error.textContent = `${value} does not answer.`;
 		return;
