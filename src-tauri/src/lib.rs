@@ -147,7 +147,11 @@ async fn open_settings(app: AppHandle) -> tauri::Result<()> {
 		return window.set_focus();
 	}
 	let mut builder = WebviewWindowBuilder::new(&app, "settings", WebviewUrl::default())
-		.title("Settings")
+		.title(format!(
+			"Settings – {} {}",
+			app.package_info().name,
+			app.package_info().version
+		))
 		.inner_size(440.0, 440.0)
 		.resizable(false)
 		.maximizable(false);
