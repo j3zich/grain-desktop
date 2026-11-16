@@ -48,8 +48,8 @@
 		return response;
 	};
 
-	const invoke = (command, args) => window.__TAURI_INTERNALS__.invoke(`plugin:libmpv|${command}`, { ...args, windowLabel: "main" });
-	const setProperty = (name, value) => window.__TAURI_INTERNALS__.invoke("mpv_set", { name, value });
+	const invoke = (command, args) => window.__TAURI_INTERNALS__.invoke(command, args);
+	const setProperty = (name, value) => invoke("mpv_set", { name, value });
 	let listening = null;
 
 	class Track extends EventTarget {
@@ -116,7 +116,7 @@
 		};
 		if (JSON.stringify(next) !== margins) {
 			margins = JSON.stringify(next);
-			invoke("set_video_margin_ratio", { ratio: next });
+			invoke("plugin:libmpv|set_video_margin_ratio", { ratio: next, windowLabel: "main" });
 		}
 		uncover(rect);
 		round();
@@ -183,7 +183,7 @@
 	function seek(time) {
 		Object.assign(state, { time, seeking: true, ended: false });
 		fire("seeking", "timeupdate");
-		window.__TAURI_INTERNALS__.invoke("mpv_seek", { time });
+		invoke("mpv_seek", { time });
 	}
 
 	const facade = {
@@ -275,7 +275,7 @@
 		mutated.disconnect();
 		removeEventListener("resize", refit);
 		margins = "";
-		invoke("set_video_margin_ratio", { ratio: { left: 0, top: 0, right: 0, bottom: 0 } });
+		invoke("plugin:libmpv|set_video_margin_ratio", { ratio: { left: 0, top: 0, right: 0, bottom: 0 }, windowLabel: "main" });
 		for (const [el, value, priority] of hidden) {
 			el.style.setProperty("visibility", value, priority);
 		}
@@ -323,7 +323,7 @@
 			opened(origin);
 			return;
 		}
-		await window.__TAURI_INTERNALS__.invoke("mpv_load", { url: state.src, aid });
+		await invoke("mpv_load", { url: state.src, aid });
 	}
 
 	function opened(time) {
@@ -344,7 +344,7 @@
 			kept = { path: new URL(state.src).pathname, origin, duration, width, height };
 			setTimeout(release);
 		} else {
-			window.__TAURI_INTERNALS__.invoke("mpv_stop");
+			invoke("mpv_stop");
 		}
 		detach();
 	}
@@ -352,7 +352,7 @@
 	function release() {
 		if (kept) {
 			kept = null;
-			window.__TAURI_INTERNALS__.invoke("mpv_stop");
+			invoke("mpv_stop");
 		}
 	}
 
@@ -361,7 +361,7 @@
 			return;
 		}
 		if (event.event === "file-loaded") {
-			opened((await window.__TAURI_INTERNALS__.invoke("mpv_get", { name: "time-pos" }).catch(() => null)) ?? 0);
+			opened((await invoke("mpv_get", { name: "time-pos" }).catch(() => null)) ?? 0);
 			return;
 		}
 		if (event.event === "playback-restart") {
@@ -464,9 +464,9 @@
 	// Only in fullscreen, not in a window: switching the display's mode makes the picture lag.
 	async function matchRefreshRate() {
 		const fps = video && state.loaded && document.fullscreenElement
-			? await window.__TAURI_INTERNALS__.invoke("mpv_get", { name: "container-fps" }).catch(() => null)
+			? await invoke("mpv_get", { name: "container-fps" }).catch(() => null)
 			: null;
-		window.__TAURI_INTERNALS__.invoke("match_refresh_rate", { fps });
+		invoke("match_refresh_rate", { fps });
 	}
 
 	addEventListener("fullscreenchange", matchRefreshRate);
@@ -477,7 +477,7 @@
 	});
 	addEventListener("keydown", (e) => {
 		if (e.ctrlKey && e.key === ",") {
-			window.__TAURI_INTERNALS__.invoke("open_settings");
+			invoke("open_settings");
 		}
 	});
 
