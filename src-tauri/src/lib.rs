@@ -170,6 +170,9 @@ async fn match_refresh_rate(app: AppHandle, fps: Option<f64>) -> tauri::Result<(
 	}
 	let window = app.get_webview_window("main").unwrap();
 	let rate = refresh::switch(window.hwnd()?, fps).map_err(|e| tauri::Error::Anyhow(e.into()))?;
+	if rate.is_none() {
+		refresh::restore();
+	}
 	sync_to_display(&app, rate)
 }
 
